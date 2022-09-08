@@ -2,10 +2,12 @@ from django.apps import AppConfig
 from django.conf import settings
 from fairseq.models.bart import BARTModel
 
+
 class TestModel(object):
 
     def sample(self,objs,beam):
         return ["test" for obj in objs]
+
 
 class TranslateConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'

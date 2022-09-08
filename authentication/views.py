@@ -50,7 +50,9 @@ def login(request):
                     "last_name": user.last_name,
                     "role": list(user_belongs_to),
                     "token": token.key,
-                }
+                },
+                "token": "Token {}".format(token.key),
+                "errorCode": 200
             }, status=status.HTTP_200_OK)
             return response
         else:

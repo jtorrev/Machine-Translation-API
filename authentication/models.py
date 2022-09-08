@@ -36,9 +36,6 @@ class MTUser(AbstractUser):
         verbose_name = 'MTUser'
         verbose_name_plural = 'MTUsers'
 
-from django.contrib import admin
-admin.site.register(MTUser)
-
 class UserSerializer(serializers.ModelSerializer):
     role = serializers.SerializerMethodField()
 

@@ -20,6 +20,15 @@ from django.urls import include
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('auth/', include('authentication.urls')),
+    path('translate/', include('translate.urls')),
     # path('', include('baseline_api.urls')),
     # path('', include('acclaro_api.urls')),
 ]
+
+from translate.daemons import translate_undone_jobs
+import threading
+
+daemon = threading.Thread(target=translate_undone_jobs,
+                          args=())
+# daemon.setDaemon(True)
+daemon.start()

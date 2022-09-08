@@ -15,17 +15,35 @@ from pathlib import Path
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-1t=52r6^#v*%7(10$=&89%x_9kx3&e%#5$avj+q=j1j+==)e7n'
 
+import environ
+import os
+
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"] = "3"
+
+env = environ.Env()
+env.read_env(env_file=os.path.join(BASE_DIR, 'environ.env'), overwrite=True)
+MODELS = env.json('MODELS')
+DEEPL_KEY = env.ENVIRON.get('DEEPL_KEY')
+DEEPL_URL = env.ENVIRON.get('DEEPL_URL')
+SERVER_PORT = env.ENVIRON.get('SERVER_PORT')
+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+from corsheaders.defaults import default_headers
+ALLOWED_HOSTS = ['*']
+CORS_ORIGIN_ALLOW_ALL = True
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    'content-type',
+]
+
 
 AUTH_USER_MODEL = 'authentication.MTUser'
 # Application definition
@@ -37,14 +55,14 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    #libraries
-     'rest_framework',
+    # libraries
+    'django_extensions',
+    'rest_framework',
     'rest_framework.authtoken',
     'corsheaders',
-    #my apps
+    # my apps
     'authentication',
-    'baseline_api',
-    'acclaro_api'
+    'translate'
 
 ]
 
@@ -62,9 +80,17 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.TokenAuthentication',
     ],
+    # 'DEFAULT_PARSER_CLASSES': (
+    #     'rest_framework.parsers.JSONParser',
+    #     'rest_framework_xml.parsers.XMLParser',
+    # ),
+    # 'DEFAULT_RENDERER_CLASSES': (
+    #     'rest_framework_xml.renderers.XMLRenderer',
+    # ),
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
-    ]
+    ],
+
 }
 
 ROOT_URLCONF = 'mt_api.urls'
@@ -88,17 +114,23 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'mt_api.wsgi.application'
 
-
 # Database
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 
 DATABASES = {
+    # 'default': {
+    #     'ENGINE': 'django.db.backends.sqlite3',
+    #     'NAME': BASE_DIR / 'db.sqlite3',
+    # }
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': 'acclaromt_jl',
+        'USER': 'admin',
+        'PASSWORD': 'acclaro0',
+        'HOST': '52.205.173.84',
+        'PORT': '5432',
     }
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/3.2/ref/settings/#auth-password-validators
@@ -118,7 +150,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
 # https://docs.djangoproject.com/en/3.2/topics/i18n/
 
@@ -131,7 +162,6 @@ USE_I18N = True
 USE_L10N = True
 
 USE_TZ = True
-
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.2/howto/static-files/

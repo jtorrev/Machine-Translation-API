@@ -13,3 +13,10 @@ class ROLES:
     @staticmethod
     def set_role(user, role):
         ROLES.APP_ROLES[role].user_set.add(user)
+
+
+
+
+
+# class ROLES:
+#     pass

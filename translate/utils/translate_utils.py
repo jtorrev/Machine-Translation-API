@@ -8,6 +8,18 @@ print("  Loading Laser module")
 laser = Laser()
 
 
+def similarity(vector_1, vector_2):
+    return 1 - spatial.distance.cosine(vector_1, vector_2)
+
+
+def get_laser_embeddings(texts, langs):
+    if len(texts) != len(langs):
+        raise Exception("The size of the 'text' list does not match the size of the 'language' list.")
+    if len(texts) == 0:
+        raise Exception("The list size cannot be 0")
+    return laser.embed_sentences(texts, lang=langs)
+
+
 def translator_deepl(text, src_lang, tgt_lang):
     print("DeepL:", text)
     headers = {
@@ -49,9 +61,12 @@ def list_qa_confidence(source_list, target_list, src_lang, tgt_lang, confidence=
                 engine_list.append("DeepL")
                 result_list.append(response)
             elif confidence:
-                src_embeddings = laser.embed_sentences([source], lang=[src_lang])
-                tgt_embeddings = laser.embed_sentences([target], lang=[tgt_lang])
-                result = 1 - spatial.distance.cosine(src_embeddings, tgt_embeddings)
+                # src_embeddings = laser.embed_sentences([source], lang=[src_lang])
+                src_embeddings = get_laser_embeddings([source], langs=[src_lang])
+                # tgt_embeddings = laser.embed_sentences([target], lang=[tgt_lang])
+                tgt_embeddings = get_laser_embeddings([target], langs=[tgt_lang])
+                #result = 1 - spatial.distance.cosine(src_embeddings, tgt_embeddings)
+                result = similarity(src_embeddings, tgt_embeddings)
                 if result < 0.7:
                     response = translator_deepl(source, src_lang, tgt_lang)
                     engine_list.append("DeepL")

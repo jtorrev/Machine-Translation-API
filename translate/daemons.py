@@ -2,7 +2,7 @@ from django.db import transaction
 from django.conf import settings
 from rest_framework.authtoken.models import Token
 from translate.models import Language, LanguagePair, Job, Translation, IN_PROGRESS, COMPLETED
-from translate.utils.translate_utils import chunks, list_qa_confidence
+from translate.utils.translate_utils import get_laser_embeddings, similarity
 from django.utils.timezone import get_current_timezone
 from datetime import datetime
 import requests
@@ -47,6 +47,30 @@ def translate_undone_jobs():
                     job.status = COMPLETED[0]
                     job.end_date = datetime.now().astimezone(tz=get_current_timezone())
                     job.save()
+        except Exception as e:
+            print("****** Error", e)
+
+        print("------- Sleeping for the next 5 seconds ----------")
+        time.sleep(5)
+
+
+def calculate_confidence():
+    while True:
+        try:
+            uncalculated_translations = Translation.objects.filter(translate_text__isnull=False,
+                                                                   confidence__isnull=True)
+            total = len(uncalculated_translations)
+            for index, u_translation in enumerate(uncalculated_translations):
+                now = datetime.now()
+                current_time = now.strftime("%H:%M:%S")
+                print("\nCalculating at: {}  Total: {}/{}".format(current_time, index + 1, total))
+                src_embeddings = get_laser_embeddings([u_translation.text],
+                                                      langs=[u_translation.lang_pair.src_lang.name_iso_639_1])
+                tgt_embeddings = get_laser_embeddings([u_translation.translate_text],
+                                                      langs=[u_translation.lang_pair.tgt_lang.name_iso_639_1])
+                result = similarity(src_embeddings, tgt_embeddings)
+                u_translation.confidence = result
+                u_translation.save()
         except Exception as e:
             print("****** Error", e)
 

@@ -1,10 +1,15 @@
 from django.db import models
 from authentication.models import MTUser
 
-PENDING = ('PENDING', 'PENDING')
+# in progress status
+QUEUED = ('QUEUED', 'QUEUED')
 IN_PROGRESS = ('IN_PROGRESS', 'IN_PROGRESS')
+# failure status
+CANCELLED = ('CANCELLED', 'CANCELLED')
+ERROR = ('ERROR', 'ERROR')
+# COMPLETED
 COMPLETED = ('COMPLETED', 'COMPLETED')
-JOB_STATUS = [PENDING, IN_PROGRESS, COMPLETED]
+JOB_STATUS = [QUEUED, IN_PROGRESS, CANCELLED, ERROR, COMPLETED]
 
 
 class Language(models.Model):

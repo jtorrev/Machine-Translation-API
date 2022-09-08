@@ -17,14 +17,14 @@ class TranslateConfig(AppConfig):
             self.translate_models[model] = {}
             self.translate_models[model]["name"] = value['name']
             print("    -- URL --> {}".format(value["url"]))
-            model_loaded = TestModel()
-            # model_loaded = BARTModel.from_pretrained(
-            #     value["url"],
-            #     checkpoint_file='model.pt',
-            #     bpe='sentencepiece',
-            #     sentencepiece_vocab=f'{value["url"]}/sentencepiece.bpe.model', share_all_embeddings=False)
-            # model_loaded.eval()
-            # model_loaded.cuda()
+            # model_loaded = TestModel()
+            model_loaded = BARTModel.from_pretrained(
+                value["url"],
+                checkpoint_file='model.pt',
+                bpe='sentencepiece',
+                sentencepiece_vocab=f'{value["url"]}/sentencepiece.bpe.model', share_all_embeddings=False)
+            model_loaded.eval()
+            model_loaded.cuda()
             self.translate_models[model]["model"] = model_loaded
             print("    -- en-deDibs model loaded successfully")
             #

@@ -19,7 +19,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-1t=52r6^#v*%7(10$=&89%x_9kx3&e%#5$avj+q=j1j+==)e7n'
 
 import environ
 import os
@@ -34,16 +33,19 @@ DEEPL_KEY = env.ENVIRON.get('DEEPL_KEY')
 DEEPL_URL = env.ENVIRON.get('DEEPL_URL')
 SERVER_PORT = env.ENVIRON.get('SERVER_PORT')
 
+# Django Conf
+SECRET_KEY = env.ENVIRON.get('SECRET_KEY')
+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
 from corsheaders.defaults import default_headers
+
 ALLOWED_HOSTS = ['*']
 CORS_ORIGIN_ALLOW_ALL = True
 CORS_ALLOW_HEADERS = list(default_headers) + [
     'content-type',
 ]
-
 
 AUTH_USER_MODEL = 'authentication.MTUser'
 # Application definition
@@ -124,11 +126,11 @@ DATABASES = {
     # }
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'acclaromt_jl',
-        'USER': 'admin',
-        'PASSWORD': 'acclaro0',
-        'HOST': '52.205.173.84',
-        'PORT': '5432',
+        'NAME': env.ENVIRON.get('DATABASE'),
+        'USER': env.ENVIRON.get('DB_USER'),
+        'PASSWORD': env.ENVIRON.get('DB_PASSWORD'),
+        'HOST': env.ENVIRON.get('DB_HOST'),
+        'PORT': env.ENVIRON.get('DB_PORT'),
     }
 }
 

@@ -21,20 +21,19 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('auth/', include('authentication.urls')),
     path('translate/', include('translate.urls')),
-    # path('', include('baseline_api.urls')),
-    # path('', include('acclaro_api.urls')),
+
 ]
 
-from translate.daemons import translate_undone_jobs,calculate_confidence
-import threading
-
-daemon = threading.Thread(target=translate_undone_jobs,
-                          args=())
-# daemon.setDaemon(True)
-daemon.start()
-
-
-daemon_2 = threading.Thread(target=calculate_confidence,
-                          args=())
-# daemon.setDaemon(True)
-daemon_2.start()
+# from translate.daemons import translate_undone_jobs,calculate_confidence
+# import threading
+#
+# daemon = threading.Thread(target=translate_undone_jobs,
+#                           args=())
+# # daemon.setDaemon(True)
+# daemon.start()
+#
+#
+# daemon_2 = threading.Thread(target=calculate_confidence,
+#                           args=())
+# # daemon.setDaemon(True)
+# daemon_2.start()

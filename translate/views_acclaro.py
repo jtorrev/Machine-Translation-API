@@ -1,20 +1,21 @@
 from datetime import datetime
 from django.db import transaction
 from django.db.models import Q
-from django.http.response import JsonResponse, HttpResponse, FileResponse
+from django.http.response import JsonResponse, FileResponse
 from django.utils.timezone import get_current_timezone
 from rest_framework import status
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.decorators import parser_classes, renderer_classes
 from rest_framework.permissions import IsAuthenticated
-from translate.models import Language, LanguagePair, Job, Translation, IN_PROGRESS
+from translate.models import Job, Translation, IN_PROGRESS, ERROR
 from translate.utils.xliff_utils import Parser, build_xliff, XLIFFParser
-from translate.utils.translate_utils import list_qa_confidence
+from translate.utils.translate_utils import list_qa_confidence, get_cleaned_str
 import json
-from translate.apps import TranslateConfig
+from translate.apps import TranslateConfig, ModelENUStoENUK
 from rest_framework_xml.parsers import XMLParser
 from rest_framework_xml.renderers import XMLRenderer
+from django.conf import settings
 
 
 @authentication_classes([TokenAuthentication])
@@ -31,20 +32,23 @@ def translate_by_id(request):
         text_list = []
         for trans in translations:
             text_list.append(trans.text)
-        lang_pair = translations[0].lang_pair
-        src_lang = lang_pair.src_lang.name_iso_639_1
-        tgt_lang = lang_pair.tgt_lang.name_iso_639_1
+        src_lang = translations[0].src_lang.lower()
+        tgt_lang = translations[0].tgt_lang.lower()
         lang_pair_key = "{}_{}".format(src_lang, tgt_lang)
         trained_model = TranslateConfig.translate_models[lang_pair_key]
         text_trans = trained_model["model"].sample(text_list, beam=5)
         print("  --AcclaroMT FR Dibs Translation:",
-              text_trans[0].replace("[{}_XX]".format(src_lang), ""))
+              text_trans[0].replace("[{}]".format(src_lang), ""))
         output_tmp_texts = []
         for sentence in text_trans:
-            output_tmp_texts.append(sentence.replace("[{}_XX]".format(tgt_lang), ""))
-        output_texts, engines = list_qa_confidence(source_list=text_list, target_list=output_tmp_texts,
-                                                   src_lang=src_lang,
-                                                   tgt_lang=tgt_lang)
+            output_tmp_texts.append(sentence.replace("[{}]".format(tgt_lang), ""))
+        if isinstance(trained_model["model"], ModelENUStoENUK):
+            output_texts = [tmp for tmp in output_tmp_texts]
+            engines = ["" for tmp in output_tmp_texts]
+        else:
+            output_texts, engines = list_qa_confidence(source_list=text_list, target_list=output_tmp_texts,
+                                                       src_lang=src_lang,
+                                                       tgt_lang=tgt_lang)
         with transaction.atomic():
             tmp_date = datetime.now().astimezone(tz=get_current_timezone())
             for index, translation in enumerate(translations):
@@ -86,23 +90,24 @@ def translate(request):
         text_list = payload['text']
         input_lang = payload['input_language'].lower()
         output_lang = payload['output_language'].lower()
-        src_lang = Language.objects.get(
-            Q(name_iso_639_1=input_lang) | Q(name_iso_639_2=input_lang) | Q(other_names=input_lang))
-        tgt_lang = Language.objects.get(
-            Q(name_iso_639_1=output_lang) | Q(name_iso_639_2=output_lang) | Q(other_names=output_lang))
-        lang_pair = LanguagePair.objects.get(src_lang__id=src_lang.id, tgt_lang_id=tgt_lang.id)
-        lang_pair_key = "{}_{}".format(lang_pair.src_lang.name_iso_639_1, lang_pair.tgt_lang.name_iso_639_1)
+        src_lang = settings.LANGUAGES_DICT[input_lang]
+        tgt_lang = settings.LANGUAGES_DICT[output_lang]
+        lang_pair_key = "{}_{}".format(src_lang, tgt_lang)
         model = TranslateConfig.translate_models[lang_pair_key]
         translation = model["model"].sample(text_list, beam=5)
         print("  --AcclaroMT FR Dibs Translation:",
-              translation[0].replace("[{}_XX]".format(src_lang.name_iso_639_1), ""))
+              translation[0].replace("[{}]".format(src_lang), ""))
         output_tmp_texts = []
         for sentence in translation:
             print(sentence)
-            output_tmp_texts.append(sentence.replace("[{}_XX]".format(tgt_lang.name_iso_639_1), ""))
-        output_texts, engines = list_qa_confidence(source_list=text_list, target_list=output_tmp_texts,
-                                                   src_lang=src_lang,
-                                                   tgt_lang=tgt_lang)
+            output_tmp_texts.append(sentence.replace("[{}]".format(tgt_lang), ""))
+        if isinstance(model["model"], ModelENUStoENUK):
+            output_texts = [tmp for tmp in output_tmp_texts]
+            engines = ["" for tmp in output_tmp_texts]
+        else:
+            output_texts, engines = list_qa_confidence(source_list=text_list, target_list=output_tmp_texts,
+                                                       src_lang=src_lang,
+                                                       tgt_lang=tgt_lang)
         with transaction.atomic():
             for index, text in enumerate(text_list):
                 tmp_date = datetime.now().astimezone(tz=get_current_timezone())
@@ -111,7 +116,8 @@ def translate(request):
                 translation.translate_text = output_texts[index]
                 translation.start_date = tmp_date
                 translation.characters = len(text.replace(" ", ""))
-                translation.lang_pair = lang_pair
+                translation.src_lang = src_lang
+                translation.tgt_lang = tgt_lang
                 translation.user = user
                 translation.engine = model['name']
                 translation.trained_model = True
@@ -154,17 +160,14 @@ def xtm_translate(request):
         parser = Parser(request.data)
         job, sentences = parser.parse_xliff()
         print(job)
+        src_lang = settings.LANGUAGES_DICT[job['src_lang']]
+        tgt_lang = settings.LANGUAGES_DICT[job['tgt_lang']]
         obj = Job()
         obj.name = "name"
         obj.status = IN_PROGRESS[0]
-        obj.src_lang=job['src_lang']
-        obj.tgt_lang=job['tgt_lang']
+        obj.src_lang = job['src_lang']
+        obj.tgt_lang = job['tgt_lang']
         obj.mtdone = False
-        src_lang_id = Language.objects.get(
-            Q(name_iso_639_1=job['src_lang']) | Q(name_iso_639_2=job['src_lang']) | Q(other_names=job['src_lang'])).id
-        tgt_lang_id = Language.objects.get(
-            Q(name_iso_639_1=job['tgt_lang']) | Q(name_iso_639_2=job['tgt_lang']) | Q(other_names=job['tgt_lang'])).id
-        lang_pair = LanguagePair.objects.get(src_lang__id=src_lang_id, tgt_lang_id=tgt_lang_id)
         obj.update_date = datetime.now().astimezone(tz=get_current_timezone())
         with transaction.atomic():
             obj.save()
@@ -182,7 +185,8 @@ def xtm_translate(request):
                 translation.job = obj
                 translation.characters = 0 if value is None or len(value) == 0 else len(value.replace(" ", ""))
                 translation.start_date = datetime.now().astimezone(tz=get_current_timezone())
-                translation.lang_pair = lang_pair
+                translation.src_lang = src_lang
+                translation.tgt_lang = tgt_lang
                 translation.user = user
                 translation.save()
         return JsonResponse({
@@ -218,9 +222,6 @@ def status_post(request, id):
             return JsonResponse({
                 "status": "success",
                 "code": status.HTTP_200_OK,
-                "data": {
-                    "job_status": job_status
-                },
                 "jobStatus": job_status
             }, status=status.HTTP_200_OK)
         else:
@@ -230,7 +231,7 @@ def status_post(request, id):
             "status": "error",
             "message": str(e),
             "code": status.HTTP_400_BAD_REQUEST,
-            "data": {}
+            "jobStatus": ERROR[0]
         }, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -250,7 +251,6 @@ def download_post(request, id):
                 sentence_array.append([sentence.id, sentence.sent_id, sentence.text, sentence.translate_text])
             download_result = build_xliff(sentence_array, src_lang=job.src_lang,
                                           tgt_lang=job.tgt_lang)
-            print(download_result)
             return FileResponse(download_result, content_type='text/xml; charset=utf-8')
         except Job.DoesNotExist:
             raise Exception("The job does not exist with this parameters")
@@ -259,5 +259,4 @@ def download_post(request, id):
             "status": "error",
             "message": str(e),
             "code": status.HTTP_400_BAD_REQUEST,
-            "data": {}
         }, status=status.HTTP_400_BAD_REQUEST)

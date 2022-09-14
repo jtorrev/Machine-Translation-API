@@ -8,6 +8,19 @@ print("  Loading Laser module")
 laser = Laser()
 
 
+def get_cleaned_str(texts):
+    excluded = []
+    tran_with_models = []
+    for i, src in enumerate(texts):
+        if '""C' in src:
+            texts[i] = src.replace('""C', '"C')
+        if src.isascii():
+            tran_with_models.append(src)
+        else:
+            excluded.append(i)
+    return tran_with_models, excluded
+
+
 def similarity(vector_1, vector_2):
     return 1 - spatial.distance.cosine(vector_1, vector_2)
 
@@ -27,8 +40,8 @@ def translator_deepl(text, src_lang, tgt_lang):
     }
     data = {
         'text': text,
-        'source_lang': src_lang.upper(),
-        'target_lang': tgt_lang.upper(),
+        'source_lang': src_lang.upper() if "_" not in src_lang else src_lang.split("_")[0].upper(),
+        'target_lang': tgt_lang.upper() if "_" not in tgt_lang else tgt_lang.split("_")[0].upper(),
     }
     response = requests.get(settings.DEEPL_URL, headers=headers, data=data)
     if response.status_code == 200:
@@ -65,7 +78,7 @@ def list_qa_confidence(source_list, target_list, src_lang, tgt_lang, confidence=
                 src_embeddings = get_laser_embeddings([source], langs=[src_lang])
                 # tgt_embeddings = laser.embed_sentences([target], lang=[tgt_lang])
                 tgt_embeddings = get_laser_embeddings([target], langs=[tgt_lang])
-                #result = 1 - spatial.distance.cosine(src_embeddings, tgt_embeddings)
+                # result = 1 - spatial.distance.cosine(src_embeddings, tgt_embeddings)
                 result = similarity(src_embeddings, tgt_embeddings)
                 if result < 0.7:
                     response = translator_deepl(source, src_lang, tgt_lang)

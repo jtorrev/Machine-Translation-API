@@ -28,13 +28,18 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "3"
 
 env = environ.Env()
 env.read_env(env_file=os.path.join(BASE_DIR, 'environ.env'), overwrite=True)
+#Translation
 MODELS = env.json('MODELS')
+LANGUAGES_DICT =env.json('LANGUAGES')
+LANGUAGES_DEEPL =env.json('LANGUAGES_DEEPL')
+
+#API KEYS
 DEEPL_KEY = env.ENVIRON.get('DEEPL_KEY')
 DEEPL_URL = env.ENVIRON.get('DEEPL_URL')
-SERVER_PORT = env.ENVIRON.get('SERVER_PORT')
 
 # Django Conf
 SECRET_KEY = env.ENVIRON.get('SECRET_KEY')
+SERVER_PORT = env.ENVIRON.get('SERVER_PORT')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -174,3 +179,4 @@ STATIC_URL = '/static/'
 # https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+

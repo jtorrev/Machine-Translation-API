@@ -9,7 +9,8 @@ from django.db.models import Q
 import requests
 from datetime import datetime
 from django.utils.timezone import get_current_timezone
-from translate.models import Translation, Language, LanguagePair
+from translate.models import Translation
+from translate.utils.translate_utils import translator_deepl
 
 
 # Create your views here.
@@ -21,26 +22,14 @@ def deepl_translate(request):
     try:
         target = request.data
         text = target['text']
-        src_lang = target['input_language']
-        tgt_lang = target['output_language']
-        src_lang_id = Language.objects.get(
-            Q(name_iso_639_1=src_lang) | Q(name_iso_639_2=src_lang) | Q(other_names=src_lang)).id
-        tgt_lang_id = Language.objects.get(
-            Q(name_iso_639_1=tgt_lang) | Q(name_iso_639_2=tgt_lang) | Q(other_names=tgt_lang)).id
-        lang_pair = LanguagePair.objects.get(src_lang__id=src_lang_id, tgt_lang_id=tgt_lang_id)
-        print("DeepL:", text)
-        headers = {
-            'Authorization': settings.DEEPL_KEY,
-        }
+        src_lang = target['input_language'].lower()
+        tgt_lang = target['output_language'].lower()
+        src_lang = settings.LANGUAGES_DICT[src_lang]
+        tgt_lang = settings.LANGUAGES_DICT[tgt_lang]
         output_texts = []
         for tmp_text in text:
-            data = {
-                'text': tmp_text,
-                'source_lang': src_lang.upper(),
-                'target_lang': tgt_lang.upper(),
-            }
-            response = requests.get(settings.DEEPL_URL, headers=headers, data=data)
-            output_texts.append(response.json()["translations"][0]["text"])
+            translated_text = translator_deepl(tmp_text, settings.LANGUAGES_DEEPL[src_lang], settings.LANGUAGES_DEEPL[tgt_lang])
+            output_texts.append(translated_text)
         result = {
             "status": "success",
             "code": status.HTTP_200_OK,
@@ -56,7 +45,8 @@ def deepl_translate(request):
                 translation = Translation()
                 translation.text = tmp_text
                 translation.translate_text = output_texts[index]
-                translation.lang_pair = lang_pair
+                translation.src_lang = src_lang
+                translation.tgt_lang = tgt_lang
                 translation.characters = len(tmp_text.replace(" ", ""))
                 translation.start_date = tmp_date
                 translation.end_date = tmp_date
